@@ -5,7 +5,7 @@ function [outs] = CORPEAR(x)
 % m_21, m_22, m_2N
 % ................
 % m_N1, m_N2, m_NN
-global N NR PearCorrMat KN K BA delta eps ObsTbl InitCorrMtr;
+global N NR PearCorrMat KN K BA delta eps ObsTbl InitCorrMtr SteadyStType;
 
 P=zeros(N, 3);
 Ps=zeros(1, 3^N);
@@ -87,18 +87,40 @@ end;                                                                %    </1>
  end;
 end;
 % xlswrite('d:\out.xlsx', MT, 'new-sheet');
+% Steady-state vector calculation
+% ===================================
+if SteadyStType == 1 
+% Power method !!
+ PT= MT';
+ x =ones(KN, 1)/KN;
+ SSt =PT * x;
+ while norm(x-SSt, 2)> eps
+     x = SSt;
+     SSt =PT * x; 
+     
+ end;
 
-% Steady-state vector
-PT= MT';
-x =ones(KN, 1)/KN;
-
-SSt =PT * x;
-while norm(x-SSt, 2)> eps
-    x = SSt;
-    SSt =PT * x; 
+ elseif SteadyStType == 2
+% Direct method !!
+Q = MT;
+ RM= sum(MT, 2);
+ for i =1:KN
+   Q(i,i) = MT(i,i)-RM(i);
+ end;
+QT = Q';
+[L,UP] = lu(QT);
+  SSt = zeros(KN, 1);
+  SSt(KN) = 1; 
+ for i = KN-1:-1:1 
+   d1 = 0;
+   for j = i+1:KN
+     d1 = d1 + UP(i, j)*SSt(j);     
+   end;
+     SSt(i) = -d1/UP(i, i);
+ end;
+SSt = SSt/sum(SSt);
 end;
-
-
+% ===================================
 % Correlation matrix
 for i1 = 1:N-1
     mxw = ObsTbl(:, i1)' * SSt;
